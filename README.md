@@ -87,6 +87,6 @@ python3 -m http.server 8080
 | Look around | Mouse drag |
 | Walk | W / A / S / D |
 | Rotate model | Control panel |
-| Move model | Arrow pad |
-| Zoom | +/- buttons |
+| Move model | Control panel  |
+| Zoom | +/- Control panel  |
 | Auto-rotate | AUTO button |
