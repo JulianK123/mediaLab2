@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Lab2 - VR Point Cloud Explorer</title>
+    <meta name="description" content="VR Point Cloud Explorer - MediaLab2"></meta>
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="js/aframe-pointcloud-component.js"></script>
+
+    <style>
+      body { margin: 0; overflow: hidden; }
+
+      #control-panel {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        font-family: 'Courier New', monospace;
+        pointer-events: all;
+      }
+
+      .panel-title {
+        color: #00ffe7;
+        font-size: 10px;
+        letter-spacing: 4px;
+        text-shadow: 0 0 8px #00ffe7;
+      }
+
+      .panel-row { display: flex; gap: 6px; align-items: center; }
+
+      .panel-group {
+        background: rgba(0, 8, 25, 0.88);
+        border: 1px solid #00ffe755;
+        border-radius: 10px;
+        padding: 8px 14px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 0 18px #00ffe715;
+      }
+
+      .group-label {
+        color: #00ffe780;
+        font-size: 9px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+      }
+
+      .btn {
+        background: rgba(0,255,231,0.07);
+        border: 1px solid #00ffe750;
+        color: #00ffe7;
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        padding: 6px 11px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.12s;
+        min-width: 42px;
+        text-align: center;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .btn:hover  { background: rgba(0,255,231,0.2); box-shadow: 0 0 10px #00ffe750; }
+      .btn:active { background: rgba(0,255,231,0.32); transform: scale(0.94); }
+
+      .btn.red  { border-color: #ff4e6a60; color: #ff4e6a; background: rgba(255,78,106,0.07); }
+      .btn.red:hover { background: rgba(255,78,106,0.2); box-shadow: 0 0 10px #ff4e6a50; }
+
+      .btn.yellow { border-color: #ffe60090; color: #ffe600; background: rgba(255,230,0,0.07); }
+      .btn.yellow:hover { background: rgba(255,230,0,0.2); box-shadow: 0 0 10px #ffe60050; }
+
+      .slider-wrap { display: flex; align-items: center; gap: 7px; }
+      .slider-lbl  { color: #00ffe780; font-size: 9px; letter-spacing: 1px; width: 46px; text-align: right; }
+
+      input[type=range] {
+        -webkit-appearance: none; appearance: none;
+        width: 110px; height: 3px;
+        background: #00ffe720; border-radius: 2px; outline: none; cursor: pointer;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 13px; height: 13px; border-radius: 50%;
+        background: #00ffe7; box-shadow: 0 0 6px #00ffe7; cursor: pointer;
+      }
+
+      #status {
+        position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+        z-index: 9999;
+        background: rgba(0,8,25,0.78);
+        border: 1px solid #00ffe730;
+        border-radius: 20px;
+        padding: 5px 18px;
+        color: #00ffe790;
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        backdrop-filter: blur(6px);
+        white-space: nowrap;
+      }
+
+      #hud-btn {
+        position: fixed; bottom: 20px; right: 16px; z-index: 10000;
+        background: rgba(0,8,25,0.88); border: 1px solid #00ffe750;
+        color: #00ffe7; font-family: 'Courier New', monospace;
+        font-size: 10px; padding: 7px 12px; border-radius: 8px;
+        cursor: pointer; backdrop-filter: blur(8px); letter-spacing: 1px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <a-scene>
+      <a-assets>
+        <img id="groundTexture" src="https://cdn.aframe.io/a-painter/images/floor.jpg">
+        <img id="skyTexture"    src="https://cdn.aframe.io/a-painter/images/sky.jpg">
+      </a-assets>
+
+      <!-- Original textured sky -->
+      <a-sky height="2048" width="2048" radius="30" src="#skyTexture" theta-length="90"></a-sky>
+
+      <!-- Original textured ground floor -->
+      <a-plane id="ground" src="#groundTexture" rotation="-90 0 0" height="100" width="100"></a-plane>
+
+      <!-- Original lights -->
+      <a-light type="ambient" color="#445451"></a-light>
+      <a-light id="main-light" type="point" intensity="2" position="2 4 4"></a-light>
+
+      <!-- Original sculpt.ply point cloud model -->
+      <a-entity id="model-wrapper" position="0 0.08 -2.5" rotation="-90 45 0" scale="0.1 0.1 0.1">
+        <a-pointcloud
+          id="sphere-cloud"
+          src="url(sculpt.ply)"
+          size="0.01">
+        </a-pointcloud>
+      </a-entity>
+
+      <!-- Camera -->
+      <a-entity id="rig" position="0 1.6 3">
+        <a-camera look-controls wasd-controls>
+          <a-cursor color="#00ffe7" opacity="0.8"></a-cursor>
+        </a-camera>
+      </a-entity>
+
+    </a-scene>
+
+    <!-- Status bar -->
+    <div id="status">◈ VR POINT CLOUD EXPLORER &nbsp;|&nbsp; SCULPT.PLY &nbsp;|&nbsp; A-FRAME 1.7.1</div>
+
+    <!-- HUD toggle -->
+    <button id="hud-btn" onclick="togglePanel()">[HUD]</button>
+
+    <!-- Control Panel -->
+    <div id="control-panel">
+      <div class="panel-title">◈ CONTROL PANEL</div>
+      <div class="panel-row">
+
+        <!-- ROTATE -->
+        <div class="panel-group">
+          <span class="group-label">Rotate</span>
+          <div class="panel-row">
+            <button class="btn" onclick="rot('y',-15)">◁ Y</button>
+            <button class="btn" onclick="rot('y', 15)">Y ▷</button>
+          </div>
+          <div class="panel-row">
+            <button class="btn" onclick="rot('x',-15)">▽ X</button>
+            <button class="btn" onclick="rot('x', 15)">X △</button>
+          </div>
+          <div class="panel-row">
+            <button class="btn" onclick="rot('z',-15)">◁ Z</button>
+            <button class="btn" onclick="rot('z', 15)">Z ▷</button>
+          </div>
+          <button class="btn yellow" id="auto-btn" onclick="toggleAuto()">AUTO ▶</button>
+        </div>
+
+        <!-- MOVE -->
+        <div class="panel-group">
+          <span class="group-label">Move</span>
+          <div class="panel-row">
+            <button class="btn" onclick="mov(0,0.3,0)">▲</button>
+          </div>
+          <div class="panel-row">
+            <button class="btn" onclick="mov(-0.3,0,0)">◀</button>
+            <button class="btn red"  onclick="reset()">⌂</button>
+            <button class="btn" onclick="mov(0.3,0,0)">▶</button>
+          </div>
+          <div class="panel-row">
+            <button class="btn" onclick="mov(0,-0.3,0)">▼</button>
+          </div>
+          <div class="panel-row">
+            <button class="btn" onclick="mov(0,0,0.4)">Closer</button>
+            <button class="btn" onclick="mov(0,0,-0.4)">Away</button>
+          </div>
+        </div>
+
+        <!-- SCALE + SLIDERS -->
+        <div class="panel-group">
+          <span class="group-label">Scale / Points</span>
+          <div class="panel-row">
+            <button class="btn" onclick="zoom(1.2)">＋ Zoom</button>
+            <button class="btn" onclick="zoom(0.83)">－ Zoom</button>
+          </div>
+          <div class="slider-wrap">
+            <span class="slider-lbl">POINTS</span>
+            <input type="range" id="size-sl" min="0.005" max="0.25" step="0.005" value="0.05"
+              oninput="setSize(this.value)">
+          </div>
+          <div class="slider-wrap">
+            <span class="slider-lbl">LIGHT</span>
+            <input type="range" id="light-sl" min="0.1" max="5" step="0.1" value="2.5"
+              oninput="setLight(this.value)">
+          </div>
+        </div>
+
+        <!-- OBJECT -->
+        <div class="panel-group">
+          <span class="group-label">Object</span>
+          <button class="btn yellow" id="vis-btn"  onclick="toggleVis()">HIDE ◎</button>
+          <button class="btn"        id="col-btn"  onclick="nextColor()">COLOR ◈</button>
+          <button class="btn"        id="grid-btn" onclick="toggleGrid()">GRID ON</button>
+          <button class="btn red"                  onclick="reset()">RESET ALL</button>
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+      // ── helpers ──
+      function W() { return document.getElementById('model-wrapper'); }
+
+      function getVec3(el, attr, def) {
+        var v = el.getAttribute(attr);
+        if (!v) return Object.assign({}, def);
+        if (typeof v === 'string') {
+          var p = v.trim().split(/\s+/);
+          return { x: parseFloat(p[0])||def.x, y: parseFloat(p[1])||def.y, z: parseFloat(p[2])||def.z };
+        }
+        return { x: v.x||def.x, y: v.y||def.y, z: v.z||def.z };
+      }
+
+      // ── Rotate ──
+      function rot(axis, deg) {
+        var el = W();
+        var r = getVec3(el, 'rotation', {x:0,y:0,z:0});
+        r[axis] += deg;
+        el.setAttribute('rotation', r.x + ' ' + r.y + ' ' + r.z);
+        status('Rotate ' + axis.toUpperCase() + ' ' + (deg>0?'+':'') + deg + '\xb0');
+      }
+
+      var autoOn = false, autoTick = null;
+      function toggleAuto() {
+        autoOn = !autoOn;
+        var btn = document.getElementById('auto-btn');
+        if (autoOn) {
+          autoTick = setInterval(function(){ rot('y', 1); }, 25);
+          btn.textContent = 'AUTO \u25a0'; btn.style.background='rgba(255,230,0,0.25)';
+          status('Auto-rotate ON');
+        } else {
+          clearInterval(autoTick);
+          btn.textContent = 'AUTO \u25b6'; btn.style.background='';
+          status('Auto-rotate OFF');
+        }
+      }
+
+      // ── Move ──
+      function mov(dx, dy, dz) {
+        var el = W();
+        var p = getVec3(el, 'position', {x:0,y:0.08,z:-2.5});
+        el.setAttribute('position', (p.x+dx) + ' ' + (p.y+dy) + ' ' + (p.z+dz));
+        status('Move (' + dx + ',' + dy + ',' + dz + ')');
+      }
+
+      // ── Scale ──
+      var sc = 1.0;
+      function zoom(f) {
+        sc = Math.max(0.05, Math.min(6, sc * f));
+        W().setAttribute('scale', sc + ' ' + sc + ' ' + sc);
+        status('Scale: ' + sc.toFixed(2));
+      }
+
+      // ── Point size ──
+      function setSize(v) {
+        var c = document.getElementById('sphere-cloud');
+        if (c) {
+          var pc = c.components && c.components['pointcloud'];
+          if (pc && pc.pointcloud) {
+            pc.pointcloud.material.size = parseFloat(v);
+            pc.pointcloud.material.needsUpdate = true;
+          }
+        }
+        status('Point size: ' + parseFloat(v).toFixed(3));
+      }
+
+      // ── Light ──
+      function setLight(v) {
+        document.getElementById('main-light').setAttribute('intensity', parseFloat(v));
+        status('Light: ' + v);
+      }
+
+      // ── Visibility ──
+      var vis = true;
+      function toggleVis() {
+        vis = !vis;
+        W().setAttribute('visible', vis);
+        document.getElementById('vis-btn').textContent = vis ? 'HIDE \u25ce' : 'SHOW \u25ce';
+        status(vis ? 'Model: visible' : 'Model: hidden');
+      }
+
+      // ── Color cycle ──
+      var cols = ['#ffffff','#00ffe7','#ff44aa','#ffcc00','#44ffaa','#ff7722'];
+      var ci = 0;
+      function nextColor() {
+        ci = (ci+1) % cols.length;
+        var c = document.getElementById('sphere-cloud');
+        if (c) {
+          var pc = c.components && c.components['pointcloud'];
+          if (pc && pc.pointcloud) {
+            pc.pointcloud.material.color.set(cols[ci]);
+            pc.pointcloud.material.vertexColors = false;
+            pc.pointcloud.material.needsUpdate = true;
+          }
+        }
+        var btn = document.getElementById('col-btn');
+        btn.style.color = cols[ci]; btn.style.borderColor = cols[ci]+'99';
+        status('Color: ' + cols[ci]);
+      }
+
+      // ── Grid ──
+      var gridOn = true;
+      function toggleGrid() {
+        gridOn = !gridOn;
+        document.getElementById('ground').setAttribute('material',
+          'color:#000a1a;wireframe:'+gridOn+';opacity:0.35;transparent:true');
+        var btn = document.getElementById('grid-btn');
+        btn.textContent = gridOn ? 'GRID ON' : 'GRID OFF';
+        btn.style.background = gridOn ? 'rgba(0,255,231,0.18)' : '';
+        status('Grid: ' + (gridOn?'ON':'OFF'));
+      }
+
+      // ── Reset ──
+      function reset() {
+        sc = 1.0;
+        W().setAttribute('position','0 0.08 -2.5');
+        W().setAttribute('rotation','-90 45 0');
+        W().setAttribute('scale','0.1 0.1 0.1');
+        if (autoOn) toggleAuto();
+        document.getElementById('size-sl').value  = 0.01;
+        document.getElementById('light-sl').value = 2.0;
+        setLight(2.0);
+        status('Reset!');
+      }
+
+      // ── Panel toggle ──
+      var panelOn = true;
+      function togglePanel() {
+        panelOn = !panelOn;
+        document.getElementById('control-panel').style.display = panelOn ? 'flex' : 'none';
+        document.getElementById('status').style.display        = panelOn ? 'block' : 'none';
+      }
+
+      // ── Status ──
+      var st;
+      function status(msg) {
+        var el = document.getElementById('status');
+        el.textContent = '\u25c8 ' + msg;
+        clearTimeout(st);
+        st = setTimeout(function(){
+          el.textContent = '\u25c8 VR POINT CLOUD EXPLORER  |  SCULPT.PLY  |  A-FRAME 1.7.1';
+        }, 2200);
+      }
+    </script>
+
+  </body>
+</html>
